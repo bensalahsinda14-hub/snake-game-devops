@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SnakeGame.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Snake DevOps Game</a> &gt; <a href="index.source.html" class="el_package">com.devops.game</a> &gt; <span class="el_source">SnakeGame.java</span></div><h1>SnakeGame.java</h1><pre class="source lang-java linenums">package com.devops.game;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+public class SnakeGame {
+    private List&lt;Position&gt; snake;
+    private Position food;
+    private int score;
+    private boolean gameOver;
+    
+    public static class Position {
+        int x, y;
+<span class="fc" id="L15">        public Position(int x, int y) {</span>
+<span class="fc" id="L16">            this.x = x;</span>
+<span class="fc" id="L17">            this.y = y;</span>
+<span class="fc" id="L18">        }</span>
+<span class="nc" id="L19">        public int getX() { return x; }</span>
+<span class="nc" id="L20">        public int getY() { return y; }</span>
+    }
+    
+<span class="fc" id="L23">    public SnakeGame() {</span>
+<span class="fc" id="L24">        snake = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L25">        snake.add(new Position(10, 10));</span>
+<span class="fc" id="L26">        snake.add(new Position(9, 10));</span>
+<span class="fc" id="L27">        snake.add(new Position(8, 10));</span>
+<span class="fc" id="L28">        score = 0;</span>
+<span class="fc" id="L29">        gameOver = false;</span>
+<span class="fc" id="L30">        food = new Position(15, 15);</span>
+<span class="fc" id="L31">    }</span>
+    
+<span class="fc" id="L33">    public List&lt;Position&gt; getSnake() { return snake; }</span>
+<span class="fc" id="L34">    public Position getFood() { return food; }</span>
+<span class="fc" id="L35">    public int getScore() { return score; }</span>
+<span class="fc" id="L36">    public boolean isGameOver() { return gameOver; }</span>
+    
+    public void move() {
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        if (!gameOver) {</span>
+<span class="fc" id="L40">            Position head = snake.get(0);</span>
+<span class="fc" id="L41">            Position newHead = new Position(head.x + 1, head.y);</span>
+<span class="fc" id="L42">            snake.add(0, newHead);</span>
+            
+<span class="pc bpc" id="L44" title="3 of 4 branches missed.">            if (newHead.x == food.x &amp;&amp; newHead.y == food.y) {</span>
+<span class="nc" id="L45">                score += 10;</span>
+<span class="nc" id="L46">                food = new Position(new Random().nextInt(20), new Random().nextInt(20));</span>
+            } else {
+<span class="fc" id="L48">                snake.remove(snake.size() - 1);</span>
+            }
+            
+<span class="pc bpc" id="L51" title="4 of 8 branches missed.">            if (newHead.x &lt; 0 || newHead.x &gt;= 20 || newHead.y &lt; 0 || newHead.y &gt;= 20) {</span>
+<span class="nc" id="L52">                gameOver = true;</span>
+            }
+        }
+<span class="fc" id="L55">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
