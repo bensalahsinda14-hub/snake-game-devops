@@ -1,638 +1,609 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-
-const GRID_SIZE = 20;
-const CELL_SIZE = 20;
-const INITIAL_SNAKE = [[10, 10]];
-const INITIAL_DIRECTION = { x: 1, y: 0 };
-
-const TRANSLATIONS = {
-  ar: {
-    title: 'Snake Master',
-    start: 'ابدأ اللعبة',
-    startAdventure: 'ابدأ المغامرة!',
-    playAgain: 'العب مرة أخرى',
-    gameOver: 'Game Over!',
-    paused: 'متوقف مؤقتاً',
-    pressP: 'اضغط P للمتابعة',
-    score: 'النقاط',
-    highScore: 'الأعلى',
-    level: 'المستوى',
-    finalScore: 'النقاط النهائية',
-    newRecord: 'رقم قياسي جديد!',
-    settings: 'الإعدادات',
-    difficulty: 'الصعوبة:',
-    customSpeed: 'سرعة مخصصة:',
-    veryFast: 'سريع جداً',
-    slow: 'بطيء',
-    controls: 'WASD أو الأسهم',
-    pauseKey: 'P للإيقاف',
-    foodInfo: 'كل تفاحة = 10 نقاط • اجمع النقاط لفتح المستويات!',
-    nextLevel: 'للمستوى التالي',
-    difficulties: {
-      facile: 'سهل',
-      moyen: 'متوسط',
-      difficile: 'صعب',
-      expert: 'خبير'
-    },
-    levels: [
-      { name: 'المبتدئ', reward: 'ممتاز!' },
-      { name: 'المتوسط', reward: 'رائع!' },
-      { name: 'المحترف', reward: 'لا يصدق!' },
-      { name: 'الخبير', reward: 'أسطوري!' },
-      { name: 'البطل', reward: 'خارق!' },
-      { name: 'الأسطورة', reward: 'إلهي! 🔥' }
-    ]
-  },
-  fr: {
-    title: 'Snake Master',
-    start: 'Commencer',
-    startAdventure: 'Commencez l\'aventure!',
-    playAgain: 'Rejouer',
-    gameOver: 'Game Over!',
-    paused: 'Pause',
-    pressP: 'Appuyez sur P pour continuer',
-    score: 'Score',
-    highScore: 'Meilleur',
-    level: 'Niveau',
-    finalScore: 'Score Final',
-    newRecord: 'Nouveau record!',
-    settings: 'Paramètres',
-    difficulty: 'Difficulté:',
-    customSpeed: 'Vitesse personnalisée:',
-    veryFast: 'Très rapide',
-    slow: 'Lent',
-    controls: 'WASD ou Flèches',
-    pauseKey: 'P pour pause',
-    foodInfo: 'Chaque pomme = 10 points • Collectez des points pour débloquer les niveaux!',
-    nextLevel: 'pour le niveau suivant',
-    difficulties: {
-      facile: 'Facile',
-      moyen: 'Moyen',
-      difficile: 'Difficile',
-      expert: 'Expert'
-    },
-    levels: [
-      { name: 'Débutant', reward: 'Excellent!' },
-      { name: 'Intermédiaire', reward: 'Super!' },
-      { name: 'Professionnel', reward: 'Incroyable!' },
-      { name: 'Expert', reward: 'Légendaire!' },
-      { name: 'Champion', reward: 'Extraordinaire!' },
-      { name: 'Légende', reward: 'Divin! 🔥' }
-    ]
-  },
-  en: {
-    title: 'Snake Master',
-    start: 'Start Game',
-    startAdventure: 'Start the Adventure!',
-    playAgain: 'Play Again',
-    gameOver: 'Game Over!',
-    paused: 'Paused',
-    pressP: 'Press P to continue',
-    score: 'Score',
-    highScore: 'Best',
-    level: 'Level',
-    finalScore: 'Final Score',
-    newRecord: 'New Record!',
-    settings: 'Settings',
-    difficulty: 'Difficulty:',
-    customSpeed: 'Custom Speed:',
-    veryFast: 'Very Fast',
-    slow: 'Slow',
-    controls: 'WASD or Arrows',
-    pauseKey: 'P to pause',
-    foodInfo: 'Each apple = 10 points • Collect points to unlock levels!',
-    nextLevel: 'to next level',
-    difficulties: {
-      facile: 'Easy',
-      moyen: 'Medium',
-      difficile: 'Hard',
-      expert: 'Expert'
-    },
-    levels: [
-      { name: 'Beginner', reward: 'Excellent!' },
-      { name: 'Intermediate', reward: 'Amazing!' },
-      { name: 'Professional', reward: 'Incredible!' },
-      { name: 'Expert', reward: 'Legendary!' },
-      { name: 'Champion', reward: 'Extraordinary!' },
-      { name: 'Legend', reward: 'Divine! 🔥' }
-    ]
-  }
-};
-
-const DIFFICULTIES = {
-  facile: { speed: 200, color: 'from-green-400 to-emerald-500' },
-  moyen: { speed: 130, color: 'from-yellow-400 to-orange-500' },
-  difficile: { speed: 80, color: 'from-orange-400 to-red-500' },
-  expert: { speed: 50, color: 'from-red-500 to-purple-600' }
-};
-
-const LEVELS = [
-  { level: 1, target: 50 },
-  { level: 2, target: 120 },
-  { level: 3, target: 200 },
-  { level: 4, target: 300 },
-  { level: 5, target: 450 },
-  { level: 6, target: 650 }
-];
-
-const SnakeGame = () => {
-  const [snake, setSnake] = useState(INITIAL_SNAKE);
-  const [food, setFood] = useState({ x: 15, y: 15 });
-  const [direction, setDirection] = useState(INITIAL_DIRECTION);
-  const [nextDirection, setNextDirection] = useState(INITIAL_DIRECTION);
-  const [gameOver, setGameOver] = useState(false);
-  const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(() => {
-    const saved = localStorage.getItem('snakeHighScore');
-    return saved ? parseInt(saved) : 0;
-  });
-  const [language, setLanguage] = useState(() => {
-    const saved = localStorage.getItem('snakeLanguage');
-    return saved || 'ar';
-  });
-  const [gameStarted, setGameStarted] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [difficulty, setDifficulty] = useState('moyen');
-  const [customSpeed, setCustomSpeed] = useState(130);
-  const [useCustomSpeed, setUseCustomSpeed] = useState(false);
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [showLevelUp, setShowLevelUp] = useState(false);
-  const [particles, setParticles] = useState([]);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const gameLoopRef = useRef(null);
-
-  const t = TRANSLATIONS[language];
-  const speed = useCustomSpeed ? customSpeed : DIFFICULTIES[difficulty].speed;
-
-  const changeLanguage = (lang) => {
-    setLanguage(lang);
-    localStorage.setItem('snakeLanguage', lang);
-  };
-
-  const generateFood = useCallback(() => {
-    let newFood;
-    do {
-      newFood = {
-        x: Math.floor(Math.random() * GRID_SIZE),
-        y: Math.floor(Math.random() * GRID_SIZE)
-      };
-    } while (snake.some(segment => segment[0] === newFood.x && segment[1] === newFood.y));
-    return newFood;
-  }, [snake]);
-
-  const createParticles = (x, y) => {
-    const newParticles = Array.from({ length: 12 }, (_, i) => ({
-      id: Date.now() + i,
-      x: x * CELL_SIZE + CELL_SIZE / 2,
-      y: y * CELL_SIZE + CELL_SIZE / 2,
-      angle: (Math.PI * 2 * i) / 12,
-      speed: 2 + Math.random() * 2
-    }));
-    setParticles(prev => [...prev, ...newParticles]);
-    setTimeout(() => {
-      setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
-    }, 500);
-  };
-
-  const resetGame = () => {
-    setSnake(INITIAL_SNAKE);
-    setFood(generateFood());
-    setDirection(INITIAL_DIRECTION);
-    setNextDirection(INITIAL_DIRECTION);
-    setGameOver(false);
-    setScore(0);
-    setGameStarted(true);
-    setIsPaused(false);
-    setCurrentLevel(1);
-    setShowLevelUp(false);
-    setParticles([]);
-  };
-
-  const moveSnake = useCallback(() => {
-    if (gameOver || !gameStarted || isPaused) return;
-
-    setDirection(nextDirection);
-
-    setSnake(prevSnake => {
-      const head = prevSnake[0];
-      const newHead = [head[0] + nextDirection.x, head[1] + nextDirection.y];
-
-      if (newHead[0] < 0 || newHead[0] >= GRID_SIZE || newHead[1] < 0 || newHead[1] >= GRID_SIZE) {
-        setGameOver(true);
-        return prevSnake;
-      }
-
-      if (prevSnake.some(segment => segment[0] === newHead[0] && segment[1] === newHead[1])) {
-        setGameOver(true);
-        return prevSnake;
-      }
-
-      const newSnake = [newHead, ...prevSnake];
-
-      if (newHead[0] === food.x && newHead[1] === food.y) {
-        const newScore = score + 10;
-        setScore(newScore);
-        createParticles(food.x, food.y);
-        setFood(generateFood());
-        
-        const nextLevel = LEVELS.find(l => newScore >= l.target && l.level > currentLevel);
-        if (nextLevel) {
-          setCurrentLevel(nextLevel.level);
-          setShowLevelUp(true);
-          setTimeout(() => setShowLevelUp(false), 2000);
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Snake Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        if (newScore > highScore) {
-          setHighScore(newScore);
-          localStorage.setItem('snakeHighScore', newScore.toString());
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
-        
-        return newSnake;
-      }
 
-      newSnake.pop();
-      return newSnake;
-    });
-  }, [nextDirection, food, gameOver, gameStarted, score, highScore, generateFood, isPaused, currentLevel]);
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+        }
 
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (!gameStarted && e.key === ' ') {
-        resetGame();
-        return;
-      }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-      if (e.key === 'p' || e.key === 'P') {
-        setIsPaused(prev => !prev);
-        return;
-      }
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-      if (gameOver || isPaused) return;
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
 
-      const key = e.key.toLowerCase();
-      
-      if ((key === 'arrowup' || key === 'w') && direction.y === 0) {
-        setNextDirection({ x: 0, y: -1 });
-      } else if ((key === 'arrowdown' || key === 's') && direction.y === 0) {
-        setNextDirection({ x: 0, y: 1 });
-      } else if ((key === 'arrowleft' || key === 'a') && direction.x === 0) {
-        setNextDirection({ x: -1, y: 0 });
-      } else if ((key === 'arrowright' || key === 'd') && direction.x === 0) {
-        setNextDirection({ x: 1, y: 0 });
-      }
-    };
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: transform 0.3s ease;
+        }
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [direction, gameOver, gameStarted, isPaused]);
+        .stat-box:hover {
+            transform: translateY(-3px);
+        }
 
-  useEffect(() => {
-    if (gameLoopRef.current) {
-      clearInterval(gameLoopRef.current);
-    }
-    gameLoopRef.current = setInterval(moveSnake, speed);
-    return () => {
-      if (gameLoopRef.current) {
-        clearInterval(gameLoopRef.current);
-      }
-    };
-  }, [moveSnake, speed]);
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
 
-  const currentLevelData = LEVELS.find(l => l.level === currentLevel) || LEVELS[0];
-  const nextLevelData = LEVELS.find(l => l.level === currentLevel + 1);
-  const progress = nextLevelData ? Math.min((score / nextLevelData.target) * 100, 100) : 100;
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
 
-  const currentLevelName = t.levels[currentLevel - 1]?.name || '';
-  const nextLevelName = t.levels[currentLevel]?.name || '';
-  const currentLevelReward = t.levels[currentLevel - 1]?.reward || '';
+        .game-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
 
-  const getEyePosition = () => {
-    if (direction.x === 1) return { left1: '70%', top1: '30%', left2: '70%', top2: '70%' };
-    if (direction.x === -1) return { left1: '30%', top1: '30%', left2: '30%', top2: '70%' };
-    if (direction.y === 1) return { left1: '30%', top1: '70%', left2: '70%', top2: '70%' };
-    return { left1: '30%', top1: '30%', left2: '70%', top2: '30%' };
-  };
+        #gameCanvas {
+            border: 4px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            background: #f8f9fa;
+        }
 
-  const eyePos = getEyePosition();
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-pink-950 p-8 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500 rounded-full filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500 rounded-full filter blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
 
-      <div className="relative z-10 bg-black/40 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/10 max-w-2xl w-full mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent drop-shadow-lg">
-            🐍 {t.title}
-          </h1>
-          <div className="flex gap-2">
-            <div className="flex gap-1 bg-white/10 backdrop-blur rounded-xl p-1">
-              <button
-                onClick={() => changeLanguage('ar')}
-                className={`px-3 py-2 rounded-lg transition-all ${
-                  language === 'ar' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'
-                }`}
-                title="العربية"
-              >
-                🇹🇳 AR
-              </button>
-              <button
-                onClick={() => changeLanguage('fr')}
-                className={`px-3 py-2 rounded-lg transition-all ${
-                  language === 'fr' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'
-                }`}
-                title="Français"
-              >
-                🇫🇷 FR
-              </button>
-              <button
-                onClick={() => changeLanguage('en')}
-                className={`px-3 py-2 rounded-lg transition-all ${
-                  language === 'en' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'
-                }`}
-                title="English"
-              >
-                🇬🇧 EN
-              </button>
-            </div>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur"
-            >
-              <span className="text-2xl">⚙️</span>
-            </button>
-          </div>
-        </div>
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
 
-        {showSettings && (
-          <div className="mb-6 bg-white/5 backdrop-blur rounded-2xl p-6 border border-white/10 space-y-4">
-            <h3 className="text-xl font-bold text-white mb-4">⚙️ {t.settings}</h3>
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .settings-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        select {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 2px solid #dee2e6;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .game-over {
+            text-align: center;
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 10px;
+            border: 2px solid #ffc107;
+            display: none;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .game-over h2 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+
+        .game-over p {
+            color: #856404;
+            font-size: 1.2em;
+        }
+
+        .instructions {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
             
-            <div>
-              <label className="text-white font-semibold mb-2 block">{t.difficulty}</label>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(DIFFICULTIES).map(([key, diff]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setDifficulty(key);
-                      setUseCustomSpeed(false);
-                    }}
-                    disabled={gameStarted && !gameOver}
-                    className={`px-4 py-3 rounded-xl font-bold transition-all transform hover:scale-105 ${
-                      difficulty === key && !useCustomSpeed
-                        ? `bg-gradient-to-r ${diff.color} text-white shadow-lg`
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
-                    } ${gameStarted && !gameOver ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {t.difficulties[key]}
-                  </button>
-                ))}
-              </div>
-            </div>
+            .stat-box {
+                min-width: 100px;
+                padding: 10px 15px;
+            }
 
-            <div>
-              <label className="text-white font-semibold mb-2 block">
-                {t.customSpeed} {customSpeed}ms
-              </label>
-              <input
-                type="range"
-                min="30"
-                max="300"
-                value={customSpeed}
-                onChange={(e) => {
-                  setCustomSpeed(parseInt(e.target.value));
-                  setUseCustomSpeed(true);
-                }}
-                disabled={gameStarted && !gameOver}
-                className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <div className="flex justify-between text-xs text-white/50 mt-1">
-                <span>{t.veryFast}</span>
-                <span>{t.slow}</span>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur px-6 py-4 rounded-2xl border border-green-500/30">
-            <div className="text-sm text-green-300 mb-1">{t.score}</div>
-            <div className="text-3xl font-bold text-white">{score}</div>
-          </div>
-          <div className="flex-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur px-6 py-4 rounded-2xl border border-yellow-500/30">
-            <div className="text-sm text-yellow-300 mb-1">{t.highScore}</div>
-            <div className="text-3xl font-bold text-white">{highScore}</div>
-          </div>
-          <div className="flex-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur px-6 py-4 rounded-2xl border border-purple-500/30">
-            <div className="text-sm text-purple-300 mb-1">{t.level}</div>
-            <div className="text-3xl font-bold text-white">{currentLevel}</div>
-          </div>
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="gameTitle">🐍 Pro Snake Game</h1>
         </div>
 
-        {nextLevelData && (
-          <div className="mb-6 bg-white/5 backdrop-blur rounded-2xl p-4 border border-white/10">
-            <div className="flex justify-between text-sm text-white/70 mb-2">
-              <span>{currentLevelName}</span>
-              <span>{nextLevelName}</span>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label" id="scoreLabel">Score</div>
+                <div class="stat-value" id="score">0</div>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 transition-all duration-300 rounded-full"
-                style={{ width: `${progress}%` }}
-              ></div>
+            <div class="stat-box">
+                <div class="stat-label" id="levelLabel">Level</div>
+                <div class="stat-value" id="level">1</div>
             </div>
-            <div className="text-center text-xs text-white/50 mt-2">
-              {score} / {nextLevelData.target} {t.nextLevel}
+            <div class="stat-box">
+                <div class="stat-label" id="speedLabel">Speed</div>
+                <div class="stat-value" id="speed">150ms</div>
             </div>
-          </div>
-        )}
-
-        <div 
-          className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl shadow-2xl border-4 border-white/20 overflow-hidden mx-auto"
-          style={{ 
-            width: GRID_SIZE * CELL_SIZE, 
-            height: GRID_SIZE * CELL_SIZE 
-          }}
-        >
-          {Array.from({ length: GRID_SIZE }).map((_, row) =>
-            Array.from({ length: GRID_SIZE }).map((_, col) => (
-              <div
-                key={`${row}-${col}`}
-                className="absolute"
-                style={{
-                  left: col * CELL_SIZE,
-                  top: row * CELL_SIZE,
-                  width: CELL_SIZE,
-                  height: CELL_SIZE,
-                  backgroundColor: (row + col) % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
-                }}
-              />
-            ))
-          )}
-
-          {snake.map((segment, index) => (
-            <div
-              key={index}
-              className="absolute rounded-lg transition-all duration-75"
-              style={{
-                left: segment[0] * CELL_SIZE + 1,
-                top: segment[1] * CELL_SIZE + 1,
-                width: CELL_SIZE - 2,
-                height: CELL_SIZE - 2,
-                background: index === 0 
-                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                  : `linear-gradient(135deg, #6ee7b7 0%, #34d399 100%)`,
-                boxShadow: index === 0 ? '0 0 20px #10b981, inset 0 0 10px rgba(255,255,255,0.3)' : '0 0 10px #6ee7b7',
-              }}
-            >
-              {index === 0 && (
-                <>
-                  <div className="absolute rounded-full bg-white transition-all duration-100"
-                    style={{
-                      left: eyePos.left1,
-                      top: eyePos.top1,
-                      width: '5px',
-                      height: '5px',
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <div className="absolute inset-0 rounded-full bg-black" style={{width: '3px', height: '3px', margin: '1px'}}></div>
-                  </div>
-                  <div className="absolute rounded-full bg-white transition-all duration-100"
-                    style={{
-                      left: eyePos.left2,
-                      top: eyePos.top2,
-                      width: '5px',
-                      height: '5px',
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <div className="absolute inset-0 rounded-full bg-black" style={{width: '3px', height: '3px', margin: '1px'}}></div>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-
-          <div
-            className="absolute rounded-full animate-pulse"
-            style={{
-              left: food.x * CELL_SIZE + 1,
-              top: food.y * CELL_SIZE + 1,
-              width: CELL_SIZE - 2,
-              height: CELL_SIZE - 2,
-              background: 'radial-gradient(circle, #ef4444 0%, #dc2626 100%)',
-              boxShadow: '0 0 30px #ef4444, inset 0 0 10px rgba(255,255,255,0.5)',
-            }}
-          >
-            <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75"></div>
-          </div>
-
-          {particles.map(p => (
-            <div
-              key={p.id}
-              className="absolute rounded-full bg-yellow-400 animate-ping"
-              style={{
-                left: p.x + Math.cos(p.angle) * p.speed * 10,
-                top: p.y + Math.sin(p.angle) * p.speed * 10,
-                width: '6px',
-                height: '6px',
-                boxShadow: '0 0 10px #fbbf24'
-              }}
-            />
-          ))}
-
-          {showLevelUp && (
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/80 to-pink-600/80 flex items-center justify-center backdrop-blur-sm animate-pulse z-50">
-              <div className="text-center transform scale-110">
-                <div className="text-6xl mb-4">🎉</div>
-                <h2 className="text-4xl font-bold text-white drop-shadow-lg mb-2">
-                  {t.level} {currentLevel}!
-                </h2>
-                <p className="text-2xl text-yellow-300 font-bold">
-                  {currentLevelReward}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {gameOver && (
-            <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center rounded-2xl z-40">
-              <div className="text-center transform scale-110 animate-pulse">
-                <div className="text-6xl mb-4">💀</div>
-                <h2 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent mb-4">
-                  {t.gameOver}
-                </h2>
-                <div className="bg-white/10 backdrop-blur rounded-xl p-6 mb-6 border border-white/20">
-                  <p className="text-2xl text-white mb-2">{t.finalScore}</p>
-                  <p className="text-5xl font-bold text-green-400">{score}</p>
-                  <p className="text-lg text-white/70 mt-2">{t.level}: {currentLevel} - {currentLevelName}</p>
-                </div>
-                {score === highScore && score > 0 && (
-                  <div className="mb-4 animate-bounce">
-                    <p className="text-2xl text-yellow-400 font-bold">🏆 {t.newRecord}</p>
-                  </div>
-                )}
-                <button
-                  onClick={resetGame}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-10 rounded-xl text-xl transition-all transform hover:scale-105 shadow-lg"
-                >
-                  {t.playAgain}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isPaused && !gameOver && gameStarted && (
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-30">
-              <div className="text-center">
-                <div className="text-6xl mb-4 animate-pulse">⏸️</div>
-                <h2 className="text-4xl font-bold text-white mb-4">{t.paused}</h2>
-                <p className="text-xl text-white/80">{t.pressP}</p>
-              </div>
-            </div>
-          )}
-
-          {!gameStarted && (
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/95 to-pink-900/95 backdrop-blur-md flex items-center justify-center rounded-2xl z-40">
-              <div className="text-center">
-                <div className="text-7xl mb-6 animate-bounce">🎮</div>
-                <h2 className="text-5xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-8">
-                  {t.startAdventure}
-                </h2>
-                <button
-                  onClick={resetGame}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-5 px-12 rounded-2xl text-2xl transition-all transform hover:scale-110 shadow-2xl"
-                >
-                  ▶️ {t.start}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="mt-6 text-center space-y-3">
-          <div className="flex items-center justify-center gap-6 text-white/90">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⌨️</span>
-              <span>{t.controls}</span>
+        <div class="settings-panel">
+            <div class="setting-row">
+                <span class="setting-label" id="langLabel">Language / Langue / اللغة:</span>
+                <select id="language">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="ar">العربية</option>
+                </select>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⏸️</span>
-              <span>{t.pauseKey}</span>
+            <div class="setting-row">
+                <span class="setting-label" id="diffLabel">Difficulty:</span>
+                <select id="difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                </select>
             </div>
-          </div>
-          <div className="text-white/60 text-sm">
-            {t.foodInfo}
-          </div>
         </div>
-      </div>
+
+        <div class="game-area">
+            <canvas id="gameCanvas" width="400" height="400"></canvas>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2 id="gameOverText">Game Over!</h2>
+            <p id="finalScoreText">Final Score: <span id="finalScore">0</span></p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">▶ Play</button>
+            <button class="btn btn-secondary" id="pauseBtn">⏸ Pause</button>
+            <button class="btn btn-secondary" id="restartBtn">🔄 Restart</button>
+        </div>
+
+        <div class="instructions">
+            <p id="instructions">🎮 Use Arrow Keys to move • Press SPACE to start/pause</p>
+        </div>
     </div>
-  );
-};
 
-export default SnakeGame;   
+    <script>
+        // Translations
+        const translations = {
+            en: {
+                title: "🐍 Pro Snake Game",
+                score: "Score",
+                level: "Level",
+                speed: "Speed",
+                play: "▶ Play",
+                pause: "⏸ Pause",
+                restart: "🔄 Restart",
+                gameOver: "Game Over!",
+                finalScore: "Final Score",
+                language: "Language / Langue / اللغة:",
+                difficulty: "Difficulty:",
+                easy: "Easy",
+                medium: "Medium",
+                hard: "Hard",
+                expert: "Expert",
+                instructions: "🎮 Use Arrow Keys to move • Press SPACE to start/pause"
+            },
+            fr: {
+                title: "🐍 Jeu du Serpent Pro",
+                score: "Score",
+                level: "Niveau",
+                speed: "Vitesse",
+                play: "▶ Jouer",
+                pause: "⏸ Pause",
+                restart: "🔄 Recommencer",
+                gameOver: "Jeu Terminé!",
+                finalScore: "Score Final",
+                language: "Language / Langue / اللغة:",
+                difficulty: "Difficulté:",
+                easy: "Facile",
+                medium: "Moyen",
+                hard: "Difficile",
+                expert: "Expert",
+                instructions: "🎮 Utilisez les flèches pour bouger • ESPACE pour démarrer/pause"
+            },
+            ar: {
+                title: "🐍 لعبة الثعبان المحترفة",
+                score: "النقاط",
+                level: "المستوى",
+                speed: "السرعة",
+                play: "▶ العب",
+                pause: "⏸ إيقاف",
+                restart: "🔄 إعادة",
+                gameOver: "!انتهت اللعبة",
+                finalScore: "النتيجة النهائية",
+                language: "Language / Langue / اللغة:",
+                difficulty: ":الصعوبة",
+                easy: "سهل",
+                medium: "متوسط",
+                hard: "صعب",
+                expert: "خبير",
+                instructions: "استخدم الأسهم للتحرك • مسافة للبدء/الإيقاف 🎮"
+            }
+        };
+
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const tileCount = 20;
+        
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 15, y: 15};
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let level = 1;
+        let gameSpeed = 150;
+        let gameLoop;
+        let isPlaying = false;
+        let isPaused = false;
+        let currentLang = 'en';
+        let difficulty = 'medium';
+
+        const difficultySpeed = {
+            easy: 200,
+            medium: 150,
+            hard: 100,
+            expert: 60
+        };
+
+        function updateLanguage() {
+            currentLang = document.getElementById('language').value;
+            const t = translations[currentLang];
+            
+            document.getElementById('gameTitle').textContent = t.title;
+            document.getElementById('scoreLabel').textContent = t.score;
+            document.getElementById('levelLabel').textContent = t.level;
+            document.getElementById('speedLabel').textContent = t.speed;
+            document.getElementById('startBtn').textContent = t.play;
+            document.getElementById('pauseBtn').textContent = t.pause;
+            document.getElementById('restartBtn').textContent = t.restart;
+            document.getElementById('gameOverText').textContent = t.gameOver;
+            document.getElementById('langLabel').textContent = t.language;
+            document.getElementById('diffLabel').textContent = t.difficulty;
+            document.getElementById('instructions').textContent = t.instructions;
+            
+            const diffSelect = document.getElementById('difficulty');
+            diffSelect.options[0].text = t.easy;
+            diffSelect.options[1].text = t.medium;
+            diffSelect.options[2].text = t.hard;
+            diffSelect.options[3].text = t.expert;
+            
+            document.getElementById('finalScoreText').innerHTML = 
+                t.finalScore + ': <span id="finalScore">' + score + '</span>';
+        }
+
+        function drawGame() {
+            // Clear canvas
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#e9ecef';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
+            
+            // Draw snake
+            snake.forEach((segment, index) => {
+                const gradient = ctx.createLinearGradient(
+                    segment.x * gridSize, segment.y * gridSize,
+                    (segment.x + 1) * gridSize, (segment.y + 1) * gridSize
+                );
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2);
+            });
+            
+            // Draw food
+            ctx.fillStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(
+                food.x * gridSize + gridSize / 2,
+                food.y * gridSize + gridSize / 2,
+                gridSize / 2 - 2,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            ctx.strokeStyle = '#ff5252';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function moveSnake() {
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            
+            // Check wall collision
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver();
+                return;
+            }
+            
+            // Check self collision
+            for (let segment of snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            snake.unshift(head);
+            
+            // Check food collision
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                level = Math.floor(score / 50) + 1;
+                gameSpeed = Math.max(50, difficultySpeed[difficulty] - (level * 10));
+                updateStats();
+                generateFood();
+                
+                if (gameLoop) {
+                    clearInterval(gameLoop);
+                    gameLoop = setInterval(gameUpdate, gameSpeed);
+                }
+            } else {
+                snake.pop();
+            }
+        }
+
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            
+            // Make sure food doesn't spawn on snake
+            for (let segment of snake) {
+                if (food.x === segment.x && food.y === segment.y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+
+        function gameUpdate() {
+            if (!isPaused) {
+                moveSnake();
+                drawGame();
+            }
+        }
+
+        function startGame() {
+            if (!isPlaying) {
+                isPlaying = true;
+                isPaused = false;
+                document.getElementById('gameOver').style.display = 'none';
+                if (!dx && !dy) {
+                    dx = 1;
+                    dy = 0;
+                }
+                gameLoop = setInterval(gameUpdate, gameSpeed);
+            }
+        }
+
+        function pauseGame() {
+            isPaused = !isPaused;
+            const t = translations[currentLang];
+            document.getElementById('pauseBtn').textContent = isPaused ? '▶ ' + t.play.substring(2) : t.pause;
+        }
+
+        function restartGame() {
+            clearInterval(gameLoop);
+            snake = [{x: 10, y: 10}];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            level = 1;
+            difficulty = document.getElementById('difficulty').value;
+            gameSpeed = difficultySpeed[difficulty];
+            isPlaying = false;
+            isPaused = false;
+            updateStats();
+            generateFood();
+            drawGame();
+            document.getElementById('gameOver').style.display = 'none';
+            const t = translations[currentLang];
+            document.getElementById('pauseBtn').textContent = t.pause;
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            isPlaying = false;
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('speed').textContent = gameSpeed + 'ms';
+        }
+
+        // Event listeners
+        document.getElementById('language').addEventListener('change', updateLanguage);
+        document.getElementById('difficulty').addEventListener('change', function() {
+            difficulty = this.value;
+            if (!isPlaying) {
+                gameSpeed = difficultySpeed[difficulty];
+                updateStats();
+            }
+        });
+        
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isPlaying) {
+                    startGame();
+                } else {
+                    pauseGame();
+                }
+            }
+            
+            if (!isPlaying || isPaused) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    if (dy === 0) { dx = 0; dy = -1; }
+                    break;
+                case 'ArrowDown':
+                    if (dy === 0) { dx = 0; dy = 1; }
+                    break;
+                case 'ArrowLeft':
+                    if (dx === 0) { dx = -1; dy = 0; }
+                    break;
+                case 'ArrowRight':
+                    if (dx === 0) { dx = 1; dy = 0; }
+                    break;
+            }
+        });
+
+        // Initialize
+        updateLanguage();
+        updateStats();
+        generateFood();
+        drawGame();
+    </script>
+</body>
+</html>
